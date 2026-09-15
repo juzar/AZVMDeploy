@@ -1,7 +1,7 @@
 # Copy this file to terraform.tfvars and fill in your values.
 # terraform.tfvars is gitignored — never commit it.
 
-subscription_id = "b6931552-4acd-42e8-85cc-dac656777f27"  # Free Trial
+subscription_id = "51826e81-4584-4520-920c-bc1a7c71316a"  # Free Trial
 location        = "westeurope"
 environment     = "dev"
 

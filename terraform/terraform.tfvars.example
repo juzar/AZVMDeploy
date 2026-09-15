@@ -1,0 +1,21 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — never commit it.
+
+subscription_id = "51826e81-4584-4520-920c-bc1a7c71316a"  # Free Trial
+location        = "westeurope"
+environment     = "dev"
+
+# ── Scaling ──────────────────────────────────────────────────────────────────
+# vm_count = 1  → single VM, direct public IP, no load balancer
+# vm_count = 2  → 2 VMs across Zone 1 + Zone 2, Standard Load Balancer added
+# vm_count = 3  → 3 VMs across Zone 1 + Zone 2 + Zone 3, Standard Load Balancer added
+vm_count = 1
+
+vm_size         = "Standard_B1s"   # 1 vCPU, 1 GB RAM — cheapest, fits Free Trial
+admin_username  = "azureuser"
+os_disk_size_gb = 30
+allowed_ssh_cidr = "*"             # Restrict to your IP in prod: "x.x.x.x/32"
+
+# ssh_public_key is intentionally omitted here.
+# Set it via environment variable to avoid storing keys in files:
+#   export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_rsa.pub)"

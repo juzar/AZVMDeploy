@@ -1,21 +1,35 @@
 # Copy this file to terraform.tfvars and fill in your values.
 # terraform.tfvars is gitignored — never commit it.
+# Alternatively, run ../setup.sh to have it generated interactively.
 
-subscription_id = "51826e81-4584-4520-920c-bc1a7c71316a"  # Free Trial
-location        = "eastus"
-environment     = "dev"
+# ── Identity ──────────────────────────────────────────────────────────────────
+subscription_id = "00000000-0000-0000-0000-000000000000"
 
-# ── Scaling ──────────────────────────────────────────────────────────────────
+# ── Region & Environment ──────────────────────────────────────────────────────
+location        = "eastus"       # Azure region (closest to your users)
+environment     = "dev"          # dev | test | prod
+
+# ── Compute ───────────────────────────────────────────────────────────────────
 # vm_count = 1  → single VM, direct public IP, no load balancer
-# vm_count = 2  → 2 VMs across Zone 1 + Zone 2, Standard Load Balancer added
-# vm_count = 3  → 3 VMs across Zone 1 + Zone 2 + Zone 3, Standard Load Balancer added
-vm_count = 1
+# vm_count = 2  → 2 VMs across Zone 1+2, Standard Load Balancer
+# vm_count = 3  → 3 VMs across Zone 1+2+3, Standard Load Balancer
+vm_count        = 1
 
-vm_size         = "Standard_DC1s_v3"   # 1 vCPU, 8 GB RAM — confirmed available on Free Trial eastus (B1s capacity-blocked)
+vm_size         = "Standard_DC1s_v3"   # 1 vCPU, 8 GB RAM (Free Trial compatible)
 admin_username  = "azureuser"
-os_disk_size_gb = 30
-allowed_ssh_cidr = "*"             # Restrict to your IP in prod: "x.x.x.x/32"
+os_disk_size_gb = 30                   # Minimum 30 GB
 
-# ssh_public_key is intentionally omitted here.
-# Set it via environment variable to avoid storing keys in files:
-#   export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_rsa.pub)"
+# ── Networking ────────────────────────────────────────────────────────────────
+vnet_cidr       = "10.0.0.0/16"    # Private address space for the Virtual Network
+subnet_cidr     = "10.0.1.0/24"    # Subnet for VMs (must be within vnet_cidr)
+
+# Restrict SSH to your IP for security. Use '*' for any IP (dev only).
+allowed_ssh_cidr = "203.0.113.5/32"   # Replace with your IP: curl https://api.ipify.org
+
+# ── Tags ──────────────────────────────────────────────────────────────────────
+owner_tag       = "your-name"
+project_tag     = "AZVMDeploy"
+
+# ── SSH Public Key ────────────────────────────────────────────────────────────
+# Do NOT paste your key here — export it as an env var instead:
+#   export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_ed25519.pub)"

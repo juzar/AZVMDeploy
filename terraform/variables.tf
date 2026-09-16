@@ -36,9 +36,9 @@ variable "vm_count" {
 }
 
 variable "vm_size" {
-  description = "Azure VM SKU. Default is cost-optimised for Free Trial (1 vCPU, 1 GB RAM)"
+  description = "Azure VM SKU. Default confirmed available on Free Trial in eastus (1 vCPU, 8 GB RAM). Standard_B1s is blocked by Azure capacity constraints on Free Trial accounts."
   type        = string
-  default     = "Standard_B1s"
+  default     = "Standard_DC1s_v3"
 }
 
 variable "admin_username" {

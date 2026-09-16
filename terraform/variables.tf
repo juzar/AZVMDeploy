@@ -69,3 +69,27 @@ variable "allowed_ssh_cidr" {
   type        = string
   default     = "*"
 }
+
+variable "vnet_cidr" {
+  description = "Address space for the Virtual Network (e.g. 10.0.0.0/16)"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "subnet_cidr" {
+  description = "CIDR for the VM subnet, must fall within vnet_cidr (e.g. 10.0.1.0/24)"
+  type        = string
+  default     = "10.0.1.0/24"
+}
+
+variable "owner_tag" {
+  description = "Owner name or team — applied as a tag on every resource for cost attribution"
+  type        = string
+  default     = ""
+}
+
+variable "project_tag" {
+  description = "Project name tag applied to every resource"
+  type        = string
+  default     = "AZVMDeploy"
+}

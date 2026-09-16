@@ -11,7 +11,7 @@ environment     = "dev"
 # vm_count = 3  → 3 VMs across Zone 1 + Zone 2 + Zone 3, Standard Load Balancer added
 vm_count = 1
 
-vm_size         = "Standard_B1s"   # 1 vCPU, 1 GB RAM — cheapest, fits Free Trial
+vm_size         = "Standard_DC1s_v3"   # 1 vCPU, 8 GB RAM — confirmed available on Free Trial eastus (B1s capacity-blocked)
 admin_username  = "azureuser"
 os_disk_size_gb = 30
 allowed_ssh_cidr = "*"             # Restrict to your IP in prod: "x.x.x.x/32"

@@ -5,14 +5,15 @@ terraform {
     resource_group_name  = "rg-tfstate-azvmdeploy"
     storage_account_name = "sttfstateazvmdeploy"
     container_name       = "tfstate"
-    key                  = "azvmdeploy.dev.tfstate"
-    # access_key provided via ARM_ACCESS_KEY env var in CI
+    # key is provided via -backend-config at init time:
+    #   terraform init -backend-config="key=azvmdeploy.${ENVIRONMENT}.tfstate"
+    # This prevents all environments from writing to the same state file.
   }
 
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
+      version = "~> 3.117"
     }
     tls = {
       source  = "hashicorp/tls"

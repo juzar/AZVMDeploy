@@ -27,3 +27,8 @@ output "vm_zones" {
   description = "Availability zone assignment per VM (empty for single-instance deployments)"
   value       = azurerm_linux_virtual_machine.main[*].zone
 }
+
+output "log_analytics_workspace_id" {
+  description = "Log Analytics workspace ID — only populated when enable_monitoring = true"
+  value       = var.enable_monitoring ? azurerm_log_analytics_workspace.main[0].id : "N/A — monitoring disabled"
+}

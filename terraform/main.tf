@@ -18,6 +18,16 @@ resource "azurerm_resource_group" "main" {
   tags     = local.common_tags
 }
 
+# ─── Resource Group Lock (prod only) ──────────────────────────────────────────
+
+resource "azurerm_management_lock" "rg" {
+  count      = var.environment == "prod" ? 1 : 0
+  name       = "lock-${local.name_prefix}"
+  scope      = azurerm_resource_group.main.id
+  lock_level = "CanNotDelete"
+  notes      = "Prevents accidental deletion of production resource group. Remove lock before terraform destroy."
+}
+
 # ─── Networking ───────────────────────────────────────────────────────────────
 
 resource "azurerm_virtual_network" "main" {
@@ -187,11 +197,43 @@ resource "azurerm_linux_virtual_machine" "main" {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-jammy"
     sku       = "22_04-lts-gen2"
-    version   = "latest"
+    # Use var.os_image_version — set to 'latest' for dev, pin a specific version for prod
+    # to prevent unplanned VM replacement when a new Ubuntu patch is published.
+    version = var.os_image_version
   }
 
-  # Prevent accidental destruction in prod-like environments
+  # Boot diagnostics: enables serial console output for diagnosing boot failures.
+  # Uses Azure-managed storage — no storage account required.
+  boot_diagnostics {}
+
   lifecycle {
-    prevent_destroy = false
+    # To destroy: temporarily set to false, run terraform apply, then terraform destroy, then revert.
+    prevent_destroy = true
+  }
+}
+
+# ─── Log Analytics Workspace (optional) ───────────────────────────────────────
+
+resource "azurerm_log_analytics_workspace" "main" {
+  count               = var.enable_monitoring ? 1 : 0
+  name                = "law-${local.name_prefix}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  sku                 = "PerGB2018"
+  retention_in_days   = var.log_analytics_retention_days
+  tags                = local.common_tags
+}
+
+# ─── VM Diagnostic Settings ────────────────────────────────────────────────────
+
+resource "azurerm_monitor_diagnostic_setting" "vm" {
+  count                      = var.enable_monitoring ? var.vm_count : 0
+  name                       = "diag-${local.name_prefix}-${count.index + 1}"
+  target_resource_id         = azurerm_linux_virtual_machine.main[count.index].id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main[0].id
+
+  metric {
+    category = "AllMetrics"
+    enabled  = true
   }
 }

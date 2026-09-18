@@ -1,0 +1,80 @@
+name: Infrastructure Drift Check
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 2am UTC nightly
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to check'
+        required: false
+        default: 'dev'
+        type: choice
+        options: [dev, test, prod]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  drift-check:
+    name: Terraform Drift Detection
+    runs-on: ubuntu-latest
+    env:
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID:        ${{ secrets.AZURE_TENANT_ID }}
+      ARM_CLIENT_ID:        ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_USE_OIDC:         "true"
+      TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_ssh_public_key:  ${{ secrets.VM_SSH_PUBLIC_KEY }}
+      ARM_ACCESS_KEY:         ${{ secrets.AZURE_TFSTATE_STORAGE_KEY }}
+      ENVIRONMENT:            ${{ inputs.environment || 'dev' }}
+    defaults:
+      run:
+        working-directory: terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.x"
+
+      - name: Terraform Init
+        run: terraform init -backend-config="key=azvmdeploy.${ENVIRONMENT}.tfstate"
+
+      - name: Drift Detection (refresh-only plan)
+        id: drift
+        run: |
+          terraform plan -refresh-only -no-color -out=drift.tfplan 2>&1 | tee drift-output.txt
+          if grep -q "No changes" drift-output.txt; then
+            echo "drift_detected=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "drift_detected=true" >> "$GITHUB_OUTPUT"
+          fi
+        continue-on-error: true
+
+      - name: Upload drift report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: drift-report-${{ github.run_id }}
+          path: terraform/drift-output.txt
+          retention-days: 30
+
+      - name: Post drift summary
+        if: always()
+        run: |
+          if [ "${{ steps.drift.outputs.drift_detected }}" == "true" ]; then
+            echo "::warning::Infrastructure drift detected in ${ENVIRONMENT}! Review the drift-report artifact."
+            cat drift-output.txt
+          else
+            echo "✅ No infrastructure drift detected in ${ENVIRONMENT}."
+          fi

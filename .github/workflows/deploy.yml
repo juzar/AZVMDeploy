@@ -46,9 +46,20 @@ jobs:
           terraform_version: "1.9.x"
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -backend-config="key=azvmdeploy.dev.tfstate"
 
-      - name: Terraform Plan
+      - name: Download plan artifact (from PR validation)
+        id: download_plan
+        uses: actions/download-artifact@v4
+        with:
+          # PR number is not available on push; fall back to fresh plan if artifact missing
+          name: tfplan-${{ github.event.pull_request.number }}
+          path: terraform/
+        continue-on-error: true
+
+      - name: Terraform Plan (fresh — if no PR artifact available)
+        id: plan_fresh
+        if: steps.download_plan.outcome == 'failure'
         run: terraform plan -out=tfplan -no-color
 
       - name: Terraform Apply
@@ -56,3 +67,9 @@ jobs:
 
       - name: Output deployment summary
         run: terraform output -no-color
+
+      - name: Post-deployment validation
+        run: |
+          cd ${{ github.workspace }}
+          ENVIRONMENT=$(terraform -chdir=terraform output -raw resource_group_name 2>/dev/null | sed 's/rg-azvmdeploy-//' || echo "dev")
+          bash scripts/validate_deployment.sh "rg-azvmdeploy-${ENVIRONMENT}" "${ENVIRONMENT}"

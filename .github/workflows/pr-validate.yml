@@ -48,11 +48,21 @@ jobs:
       - name: Terraform Format Check
         id: fmt
         run: terraform fmt -check -recursive
+        # Not continue-on-error — format failures block the PR
+
+      - name: Checkov IaC Security Scan
+        id: checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform
+          output_format: cli
+          soft_fail: true   # reports findings but does not block until baseline is established
         continue-on-error: true
 
       - name: Terraform Init
         id: init
-        run: terraform init
+        run: terraform init -backend-config="key=azvmdeploy.dev.tfstate"
 
       - name: Terraform Validate
         id: validate
@@ -63,25 +73,35 @@ jobs:
         run: terraform plan -out=tfplan -no-color
         continue-on-error: true
 
+      - name: Upload plan artifact
+        if: steps.plan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ github.event.pull_request.number }}
+          path: terraform/tfplan
+          retention-days: 5
+
       - name: Post Plan Summary to PR
         uses: actions/github-script@v7
         if: always()
         with:
           script: |
             const fmt      = '${{ steps.fmt.outcome }}';
+            const checkov  = '${{ steps.checkov.outcome }}';
             const validate = '${{ steps.validate.outcome }}';
             const plan     = '${{ steps.plan.outcome }}';
 
-            const icon = (s) => s === 'success' ? '✅' : '❌';
+            const icon = (s) => s === 'success' ? '✅' : s === 'skipped' ? '⏭' : '❌';
 
             const body = [
               '## Terraform Plan Results',
               '',
               `| Step | Status |`,
               `|------|--------|`,
-              `| Format check | ${icon(fmt)} \`${fmt}\` |`,
-              `| Validate     | ${icon(validate)} \`${validate}\` |`,
-              `| Plan         | ${icon(plan)} \`${plan}\` |`,
+              `| Format check       | ${icon(fmt)} \`${fmt}\` |`,
+              `| Checkov IaC scan   | ${icon(checkov)} \`${checkov}\` |`,
+              `| Validate           | ${icon(validate)} \`${validate}\` |`,
+              `| Plan               | ${icon(plan)} \`${plan}\` |`,
               '',
               '<details><summary>Plan output</summary>',
               '',
@@ -92,7 +112,9 @@ jobs:
               '',
               plan === 'failure'
                 ? '> ⚠️ Plan failed — review errors above before merging.'
-                : '> ✅ Plan succeeded — safe to merge.',
+                : checkov === 'failure'
+                ? '> ⚠️ Checkov found security findings — review before merging. Plan artifact uploaded for deploy.'
+                : '> ✅ All checks passed — safe to merge. Plan artifact uploaded for deploy.',
             ].join('\n');
 
             github.rest.issues.createComment({

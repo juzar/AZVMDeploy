@@ -93,3 +93,26 @@ variable "project_tag" {
   type        = string
   default     = "AZVMDeploy"
 }
+
+variable "os_image_version" {
+  description = "Ubuntu 22.04 LTS image version. Use 'latest' for dev, pin a specific version (e.g. '22.04.202401161') for production to prevent unplanned VM replacement when a new Ubuntu patch is published."
+  type        = string
+  default     = "latest"
+}
+
+variable "enable_monitoring" {
+  description = "Deploy a Log Analytics workspace and wire VM diagnostic settings into it. Recommended for production."
+  type        = bool
+  default     = false
+}
+
+variable "log_analytics_retention_days" {
+  description = "Log Analytics workspace data retention in days (30-730)."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.log_analytics_retention_days >= 30 && var.log_analytics_retention_days <= 730
+    error_message = "Retention must be between 30 and 730 days."
+  }
+}

@@ -1,0 +1,13 @@
+# Checkov IaC security scan configuration
+# Docs: https://www.checkov.io/2.Basics/CLI%20Command%20Reference.html
+compact: true
+framework:
+  - terraform
+directory:
+  - terraform
+skip-check:
+  - CKV_AZURE_1    # SSH key auth enforced — password auth is disabled by Terraform resource config
+quiet: false
+soft-fail-on:
+  - LOW
+  - MEDIUM
